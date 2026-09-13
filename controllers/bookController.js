@@ -1,21 +1,16 @@
-const db = require("../config/databaseConfig");
+const { 
+    getBooks,
+    insertBook,
+    getBookById,
+    updateBookTitle,
+    deleteBook
+ } = require("../models/bookModels");
 
 const getAllBooks = async (req, res) => {
-    const targetAuthor = req.query.author;
-    
     try {
-        let sqlQuery = "SELECT * FROM books";
-        let params = []; 
-        
-        if (targetAuthor) {
-            sqlQuery += " WHERE author = ?";
-            params.push(targetAuthor); 
-        }
-        
-        const [rows] = await db.query(sqlQuery, params);
-        
-        res.json(rows);
-        
+        const targetAuthor = req.query.author;
+        const [books] = await getBooks(targetAuthor);
+        res.json(books);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -31,10 +26,7 @@ const postBook = async (req, res) => {
     }
 
     try {
-        await db.query(
-            "INSERT INTO books(title, author, price) VALUES (?, ?, ?)",
-            [title, author, price]
-        );
+        await insertBook(title, author, price);
         res.status(201).json({
             message: "Book added",
             bookId: result.insertId
@@ -48,10 +40,7 @@ const postBook = async (req, res) => {
 
 const searchBookById = async (req, res) => {
     try {
-        const [rows] = await db.query(
-            "SELECT * FROM books WHERE id = ?",
-            [req.params.id]
-        );
+        const [rows] = await getBookById(req.params.id);
 
         if (rows.length === 0) {
             return res.status(404).json({ error: "Book not found" });
@@ -69,10 +58,8 @@ const searchByIdUpdateTitle = async (req, res) => {
     const { title } = req.body;
     const { id } = req.params;
     try {
-        await db.query(
-            "UPDATE books SET title = ? WHERE id = ?",
-            [title, id]
-        );
+        const [result] = await updateBookTitle(title, id);
+
         if (result.affectedRows === 0) {
             return res.status(404).json({
                 error: "Book not found"
@@ -90,10 +77,8 @@ const searchByIdUpdateTitle = async (req, res) => {
 
 const searchByIdDeleteBook = async (req, res) => {
     try {
-        await db.query(
-            "DELETE FROM books WHERE id=?",
-            [req.params.id]
-        );
+        const [result] = await deleteBook(req.params.id);
+
         if (result.affectedRows === 0) {
             return res.status(404).json({
                 error: "Book not found"
