@@ -1,4 +1,8 @@
-const db = require("../config/db");
+const { 
+    findUsersByEmail,
+    getUserByEmail,
+    insertUser
+} = require("../models/userModels");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
@@ -12,10 +16,7 @@ const register = async (req, res) => {
             });
         }
 
-        const [existingUsers] = await db.execute(
-            "SELECT id FROM users WHERE email = ?",
-            [email]
-        );
+        const [existingUsers] = await findUsersByEmail(email);
 
         if (existingUsers.length > 0) {
             return res.status(409).json({
@@ -24,11 +25,8 @@ const register = async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-
-        await db.execute(
-            "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
-            [name, email, hashedPassword]
-        );
+        
+        await insertUser(name, email, hashedPassword);
 
         res.status(201).json({
             message: "User registered successfully"
@@ -46,10 +44,7 @@ const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        const [users] = await db.execute(
-            "SELECT * FROM users WHERE email = ?",
-            [email]
-        );
+        const [users] = await getUserByEmail(email);
 
         if (users.length === 0) {
             return res.status(401).json({

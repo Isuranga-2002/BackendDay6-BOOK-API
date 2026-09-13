@@ -1,11 +1,9 @@
-const db = require("../config/db");
+const { getUserProfile } = require("../models/userModels")
 
 const getProfile = async (req, res) => {
     try {
-        const [users] = await db.execute(
-            "SELECT id, name, email, created_at FROM users WHERE id = ?",
-            [req.user.id]
-        );
+        const id = req.user.id;
+        const [users] = await getUserProfile(id);
         if (users.length === 0) {
             return res.status(404).json({
                 message: "User not found"

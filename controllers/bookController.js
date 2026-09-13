@@ -1,4 +1,4 @@
-const db = require("../config/db");
+const db = require("../config/databaseConfig");
 
 const getAllBooks = async (req, res) => {
     const targetAuthor = req.query.author;
