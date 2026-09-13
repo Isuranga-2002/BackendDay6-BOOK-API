@@ -4,7 +4,7 @@ const {
     insertUser
 } = require("../models/userModels");
 const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
+const { generateToken } = require("../utils/jwtutils");
 
 const register = async (req, res) => {
     try {
@@ -65,17 +65,7 @@ const login = async (req, res) => {
             });
         }
 
-        const token = jwt.sign(
-            {
-                id: user.id,
-                email: user.email
-            },
-            process.env.JWT_SECRET,
-            {
-                expiresIn: "1h"
-            }
-        );
-
+        const token = generateToken(user.id, user.email, process.env.JWT_SECRET);
         res.json({
             message: "Login successful",
             token

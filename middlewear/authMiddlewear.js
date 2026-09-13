@@ -1,4 +1,4 @@
-const jwt = require("jsonwebtoken");
+const { verifyToken } = require("../utils/jwtutils");
 
 const auth = (req, res, next) => {
     try {
@@ -12,10 +12,7 @@ const auth = (req, res, next) => {
 
         const token = authHeader.split(" ")[1];
 
-        const decoded = jwt.verify(
-            token,
-            process.env.JWT_SECRET
-        );
+        const decoded = verifyToken(token, process.env.JWT_SECRET);
 
         req.user = decoded;
 
