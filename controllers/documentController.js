@@ -1,7 +1,8 @@
 const { 
     docMetaDataUpload,
     docMetaDataGet,
-    docMetaDataGetById
+    docMetaDataGetById,
+    docUrlById
  } = require("../models/documentModels");
 
 const documentUpload = async (req, res) => {
@@ -43,10 +44,26 @@ const documentGetById = async (req, res) => {
     }
 };
 
+const getDocument = async (req, res) => {
+
+    const document = await docUrlById(req.params.id);
+
+    if (!document) {
+        return res.status(404).json({
+            message: "Document not found"
+        });
+    }
+
+    res.sendFile(document.filepath, {
+        root: "."
+    });
+};
+
 module.exports ={ 
     documentUpload,
     documentGet,
-    documentGetById
+    documentGetById,
+    getDocument
  };
 
 
