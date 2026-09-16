@@ -1,5 +1,9 @@
 const express = require("express");
 const cors = require("cors");
+const swaggerUi = require("swagger-ui-express");
+const YAML = require("yamljs");
+const swaggerDocument = YAML.load('./docs/openapi.yaml');
+
 require("dotenv").config();
 
 const PORT = process.env.BE_PORT || 3000;
@@ -31,6 +35,7 @@ app.use("/auth", authRoutes);
 app.use("/user", userRoutes);
 app.use("/documents", documentRoutes);
 app.use("/uploads", express.static("uploads"));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // 404
 app.use((req, res) => {

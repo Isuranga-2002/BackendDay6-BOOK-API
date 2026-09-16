@@ -1,0 +1,732 @@
+openapi: 3.0.3
+info:
+  title: Book Management API
+  description: |
+    RESTful API for the Book Management system built with Node.js, Express, and MySQL.
+    Provides authentication, user profile management, book catalog operations, PDF report generation, and document uploads.
+  version: 1.0.0
+  contact:
+    name: API Support
+
+servers:
+  - url: http://localhost:3000
+    description: Local Development Server
+
+tags:
+  - name: Health
+    description: Health check and status endpoints
+  - name: Auth
+    description: User authentication and registration
+  - name: Users
+    description: User profile and account management
+  - name: Books
+    description: Operations related to book inventory and reports
+  - name: Documents
+    description: Document upload and file retrieval operations
+
+paths:
+  /:
+    get:
+      summary: Root health check
+      description: Returns a simple text message confirming that the server is online.
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Server is running
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Server is running!
+
+  /health:
+    get:
+      summary: Health check status
+      description: Returns the health status of the application.
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /auth/register:
+    post:
+      summary: Register a new user
+      description: Creates a new user account with hashed password credentials.
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: User registered successfully
+        '400':
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Name, email and password are required
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: User already exists
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Server error
+
+  /auth/login:
+    post:
+      summary: User login
+      description: Authenticates user credentials and returns a signed JWT access token (valid for 1 hour).
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLoginRequest'
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid email or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Invalid email or password
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Server error
+
+  /user/profile:
+    get:
+      summary: Get current user profile
+      description: Retrieves profile details of the currently authenticated user extracted from the JWT token.
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: User not found
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Server error
+
+  /books:
+    get:
+      summary: Get all books
+      description: Retrieves a list of all books, with optional filtering by author name.
+      tags:
+        - Books
+      parameters:
+        - $ref: '#/components/parameters/AuthorQueryParam'
+      responses:
+        '200':
+          description: A list of books
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Book'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+    post:
+      summary: Add a new book
+      description: Creates a new book entry in the database. Requires authentication.
+      tags:
+        - Books
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookCreateRequest'
+      responses:
+        '201':
+          description: Book successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookCreatedResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Please provide title, author, and price
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /books/report:
+    get:
+      summary: Generate book PDF report
+      description: Generates and downloads a structured PDF report containing all books.
+      tags:
+        - Books
+      responses:
+        '200':
+          description: PDF report generated and downloaded successfully
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+                example: attachment; filename=books-report.pdf
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /books/{id}:
+    get:
+      summary: Get book by ID
+      description: Retrieves a single book record by its unique identifier.
+      tags:
+        - Books
+      parameters:
+        - $ref: '#/components/parameters/BookIdParam'
+      responses:
+        '200':
+          description: Book details found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '404':
+          description: Book not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Book not found
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+    put:
+      summary: Update book title
+      description: Updates the title of an existing book by ID. Requires authentication.
+      tags:
+        - Books
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BookIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookUpdateRequest'
+      responses:
+        '200':
+          description: Book title updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Updated
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Book not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Book not found
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+    delete:
+      summary: Delete a book
+      description: Removes a book record from the database by ID. Requires authentication.
+      tags:
+        - Books
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BookIdParam'
+      responses:
+        '200':
+          description: Book deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Deleted
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Book not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Book not found
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /documents:
+    get:
+      summary: Get all uploaded documents metadata
+      description: Returns a list of metadata for all uploaded documents (id, title, filename, filesize).
+      tags:
+        - Documents
+      responses:
+        '200':
+          description: List of document metadata
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentMetadata'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+    post:
+      summary: Upload a document
+      description: Uploads a single PDF document (maximum file size 20MB) along with a title.
+      tags:
+        - Documents
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - title
+                - file
+              properties:
+                title:
+                  type: string
+                  description: Title or label for the document
+                  example: Programming Fundamentals Module 1
+                file:
+                  type: string
+                  format: binary
+                  description: PDF file to upload (Max 20MB)
+      responses:
+        '200':
+          description: File uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentUploadResponse'
+        '400':
+          description: Invalid file format (only PDF allowed) or size limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Only PDF files are allowed
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /documents/{id}:
+    get:
+      summary: Download or view document by ID
+      description: Retrieves and streams the PDF document file associated with the given document ID.
+      tags:
+        - Documents
+      parameters:
+        - $ref: '#/components/parameters/DocumentIdParam'
+      responses:
+        '200':
+          description: Document file content
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Document not found
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /uploads/{filename}:
+    get:
+      summary: Get static uploaded file
+      description: Serves a previously uploaded static file directly by its filename.
+      tags:
+        - Documents
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          description: The stored filename in the uploads directory
+          schema:
+            type: string
+          example: 1789292111056-SE1102_ProgrammingFundamentals_L12M1.pdf
+      responses:
+        '200':
+          description: File served successfully
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Route not found
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Provide your JSON Web Token (JWT) retrieved from `/auth/login`.
+        Header format: `Authorization: Bearer <token>`
+
+  parameters:
+    BookIdParam:
+      name: id
+      in: path
+      required: true
+      description: Numeric ID of the book
+      schema:
+        type: integer
+      example: 1
+
+    DocumentIdParam:
+      name: id
+      in: path
+      required: true
+      description: Numeric ID of the document
+      schema:
+        type: integer
+      example: 1
+
+    AuthorQueryParam:
+      name: author
+      in: query
+      required: false
+      description: Filter books by author name
+      schema:
+        type: string
+      example: Robert C. Martin
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: OK
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Operation completed successfully
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Error description
+
+    UserRegisterRequest:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        name:
+          type: string
+          example: John Doe
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        password:
+          type: string
+          format: password
+          example: password123
+
+    UserLoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        password:
+          type: string
+          format: password
+          example: password123
+
+    LoginResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Login successful
+        token:
+          type: string
+          description: Signed JWT authentication token
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    UserProfileResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: John Doe
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-09-16T08:30:00.000Z'
+
+    Book:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: Clean Code
+        author:
+          type: string
+          example: Robert C. Martin
+        price:
+          type: number
+          format: float
+          example: 29.99
+        genre:
+          type: string
+          nullable: true
+          example: Programming
+        published_year:
+          type: integer
+          nullable: true
+          example: 2008
+
+    BookCreateRequest:
+      type: object
+      required:
+        - title
+        - author
+        - price
+      properties:
+        title:
+          type: string
+          example: The Pragmatic Programmer
+        author:
+          type: string
+          example: Andrew Hunt, David Thomas
+        price:
+          type: number
+          format: float
+          example: 45.50
+
+    BookUpdateRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          example: Clean Code (2nd Edition)
+
+    BookCreatedResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Book added
+        bookId:
+          type: integer
+          example: 1
+
+    DocumentMetadata:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: Lecture 12 Notes
+        filename:
+          type: string
+          example: 1789292111056-SE1102_ProgrammingFundamentals_L12M1.pdf
+        filesize:
+          type: integer
+          example: 2048576
+
+    MulterFile:
+      type: object
+      properties:
+        fieldname:
+          type: string
+          example: file
+        originalname:
+          type: string
+          example: SE1102_ProgrammingFundamentals_L12M1.pdf
+        encoding:
+          type: string
+          example: 7bit
+        mimetype:
+          type: string
+          example: application/pdf
+        destination:
+          type: string
+          example: uploads/
+        filename:
+          type: string
+          example: 1789292111056-SE1102_ProgrammingFundamentals_L12M1.pdf
+        path:
+          type: string
+          example: uploads/1789292111056-SE1102_ProgrammingFundamentals_L12M1.pdf
+        size:
+          type: integer
+          example: 2048576
+
+    DocumentUploadResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: File uploaded successfully
+        file:
+          $ref: '#/components/schemas/MulterFile'
+
+  responses:
+    UnauthorizedError:
+      description: Authentication token is missing, invalid, or expired
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MessageResponse'
+          examples:
+            missingToken:
+              summary: Missing authentication token
+              value:
+                message: Authentication token required
+            invalidToken:
+              summary: Invalid or expired token
+              value:
+                message: Invalid or expired token
+
+    ErrorResponse:
+      description: Internal server error with error details
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
