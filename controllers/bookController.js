@@ -4,7 +4,11 @@ const {
     getBookById,
     updateBookTitle,
     deleteBook
- } = require("../models/bookModels");
+} = require("../models/bookModels");
+
+ const {
+    generateBookReport
+} = require("../utils/generateBookReport");
 
 const getAllBooks = async (req, res) => {
     try {
@@ -94,10 +98,21 @@ const searchByIdDeleteBook = async (req, res) => {
     }
 };
 
+const generateBookReportController = async (req, res) => {
+
+    const [books] = await getBooks();
+
+    generateBookReport(
+        books,
+        res
+    );
+};
+
 module.exports = {
     getAllBooks,
     postBook,
     searchBookById,
     searchByIdUpdateTitle,
-    searchByIdDeleteBook
+    searchByIdDeleteBook,
+    generateBookReportController
 };

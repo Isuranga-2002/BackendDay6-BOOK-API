@@ -7,11 +7,13 @@ const {
     postBook, 
     searchBookById, 
     searchByIdUpdateTitle, 
-    searchByIdDeleteBook 
+    searchByIdDeleteBook,
+    generateBookReportController 
 } = require('../controllers/bookController');
 
 router.get("/", getAllBooks);             
-router.post("/", auth, postBook);               
+router.post("/", auth, postBook);  
+router.get("/report", generateBookReportController);             
 router.get("/:id", searchBookById);       
 router.put("/:id",auth, searchByIdUpdateTitle); 
 router.delete("/:id", auth, searchByIdDeleteBook);
